@@ -3,60 +3,855 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>ロビー</title>
-  <link rel="stylesheet" href="/style.css" />
+  <title>NOCT LOG</title>
+  <style>
+    :root{
+      color-scheme: dark;
+      --bg:#000;
+      --panel:#0a0a0a;
+      --line:rgba(255,255,255,.14);
+      --text:#fff;
+      --muted:rgba(255,255,255,.72);
+      --red:#b00000;
+      --red2:#d00000;
+      --ok:#3bd671;
+      --warn:#ffd36a;
+      --r:14px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "MS Gothic", monospace;
+    }
+    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+    }
+    .wrap{ max-width: 980px; margin: 0 auto; padding: 14px 12px 28px; }
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      border:1px solid var(--line);
+      background: #050505;
+      padding: 12px;
+      border-radius: var(--r);
+      position: sticky;
+      top: 8px;
+      z-index: 10;
+    }
+    .logo{ font-weight: 900; letter-spacing: .14em; font-size: 18px; white-space:nowrap; }
+
+    .nav{ display:flex; gap: 10px; flex-wrap:wrap; justify-content:flex-end; }
+    .btn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.18);
+      background: var(--red);
+      color: var(--text);
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-weight: 900;
+      font-size: 18px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn:hover{ background: var(--red2); }
+    .btn.gray{ background: #0a0a0a; }
+    .btn.gray:hover{ background: #121212; }
+    .btn.small{ padding: 10px 12px; font-size: 16px; border-radius: 10px; }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; }
+
+    .grid{ display:grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
+    @media(min-width: 900px){ .grid{ grid-template-columns: 1fr 1fr; } }
+
+    .card{ border:1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 12px; }
+    .title{ font-weight: 900; font-size: 18px; margin: 0 0 10px; }
+
+    input[type="text"], input[type="password"], textarea{
+      width:100%;
+      border:1px solid rgba(255,255,255,.18);
+      background:#000;
+      color:#fff;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 900;
+      outline:none;
+      font-family: var(--mono);
+    }
+    textarea{ min-height: 150px; resize: vertical; line-height:1.6; }
+    label{ display:block; margin: 10px 0 6px; color: var(--muted); font-size: 14px; font-weight: 900; }
+
+    .notice{
+      border:1px solid rgba(255,211,106,.40);
+      background: rgba(255,211,106,.08);
+      padding: 10px;
+      border-radius: 12px;
+      font-weight: 900;
+      font-size: 14px;
+      color: rgba(255,245,210,.95);
+    }
+    .notice.bad{ border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: rgba(255,255,255,.86); }
+
+    .list{ display:flex; flex-direction:column; gap: 10px; }
+    .post{ border:1px solid rgba(255,255,255,.16); background:#000; border-radius: 12px; padding: 10px; }
+    .postHead{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+    .postTitle{ font-weight: 900; font-size: 16px; }
+    .meta{ color: var(--muted); font-size: 12px; margin-top: 6px; display:flex; gap:10px; flex-wrap:wrap; }
+    .body{ white-space: pre-wrap; word-break: break-word; line-height: 1.6; font-size: 16px; margin-top: 8px; }
+    .tags{ color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .pill{
+      border:1px solid rgba(255,255,255,.16);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--muted);
+      background: rgba(255,255,255,.05);
+      white-space: nowrap;
+    }
+    .pill.ok{ border-color: rgba(59,214,113,.35); color: rgba(200,255,225,.95); background: rgba(59,214,113,.10); }
+    .pill.warn{ border-color: rgba(255,211,106,.40); color: rgba(255,245,210,.95); background: rgba(255,211,106,.10); }
+    .pill.bad{ border-color: rgba(176,0,0,.55); color: rgba(255,220,220,.95); background: rgba(176,0,0,.12); }
+
+    .actions{ display:flex; gap: 10px; flex-wrap:wrap; margin-top: 10px; }
+
+    .modalBack{ position:fixed; inset:0; background: rgba(0,0,0,.75); display:none; align-items:center; justify-content:center; padding: 16px; z-index: 99; }
+    .modalBack.show{ display:flex; }
+    .modal{ width:100%; max-width: 760px; border:1px solid rgba(255,255,255,.16); background:#060606; border-radius: 14px; padding: 12px; }
+    .modal h3{ margin: 0 0 10px; font-size: 18px; font-weight: 900; }
+    .modal .modalActions{ display:flex; justify-content:flex-end; gap: 10px; flex-wrap:wrap; margin-top: 12px; }
+
+    .fileList{ display:flex; flex-direction:column; gap: 8px; margin-top: 10px; }
+    .fileRow{ border:1px solid rgba(255,255,255,.16); background:#000; border-radius: 12px; padding: 10px; display:flex; justify-content:space-between; align-items:center; gap: 10px; }
+    .fileRow .name{ font-weight: 900; font-size: 14px; }
+    .fileRow .info{ color: var(--muted); font-size: 12px; }
+  </style>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <div>
-        <h1>ロビー</h1>
-        <div class="sub">密告掲示板</div>
-      </div>
-      <div class="actions">
-        <button id="mikokuBtn" type="button">密告</button>
-        <button id="refreshBtn" class="secondary" type="button">更新</button>
-      </div>
-    </header>
+  <div class="wrap">
+    <div class="top">
+      <div class="logo">NOCT LOG</div>
+      <div class="nav" id="nav"></div>
+    </div>
 
-    <section class="panel" id="boardWrap" aria-label="掲示板">
-      <div id="boardHead">
-        <div id="status" aria-live="polite"></div>
-        <div class="actions">
-          <button id="closeComposeBtn" class="secondary" type="button" style="display:none;">閉じる</button>
-        </div>
-      </div>
-
-      <div id="posts"></div>
-
-      <div id="compose">
-        <div id="composeInner">
-          <div class="grid">
-            <label>
-              名前
-              <input id="name" autocomplete="nickname" placeholder="名無しさん" maxlength="24" />
-            </label>
-            <label>
-              メール
-              <input id="mail" autocomplete="email" placeholder="（任意）" maxlength="40" />
-            </label>
-          </div>
-
-          <label style="margin-top:8px;">
-            本文
-            <textarea id="body" placeholder="個人情報・誹謗中傷は書かない。短く、事実だけ。" maxlength="800"></textarea>
-          </label>
-
-          <div class="composeActions">
-            <button id="sendBtn" type="button">書き込む</button>
-            <button id="cancelBtn" class="secondary" type="button">キャンセル</button>
-          </div>
-        </div>
-        <div class="note">※個人情報・誹謗中傷は禁止。</div>
-      </div>
-    </section>
+    <div id="root"></div>
   </div>
 
-  <script src="/app.js"></script>
+  <div class="modalBack" id="modalBack" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3 id="modalTitle">確認</h3>
+      <div id="modalBody"></div>
+      <div class="modalActions" id="modalActions"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  // UIにサーバ名は出さない（コード内のみ）
+  const BASE_URL = "https://anim5s-server.onrender.com";
+  const API_PREFIX = "/api/noctlog";
+
+  const LS = {
+    userId: "noct_user_id",
+    myVotes: "noct_votes_v1",
+    localStore: "noct_local_store_v1",
+    adminSession: "noct_admin_session_v1",
+  };
+
+  const state = {
+    route: "lobby",
+    busy: false,
+    userId: "",
+    admin: { authed:false, name:"", token:"" },
+    data: { approved:[], mine:[], pending:[], rejected:[], approvedAll:[] },
+  };
+
+  const $ = (s)=>document.querySelector(s);
+  const el = (tag, attrs={}, ...children) => {
+    const n = document.createElement(tag);
+    for(const [k,v] of Object.entries(attrs)){
+      if(k === "class") n.className = v;
+      else if(k === "text") n.textContent = v;
+      else if(k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
+      else if(v !== null && v !== undefined) n.setAttribute(k, String(v));
+    }
+    for(const c of children){
+      if(c === null || c === undefined) continue;
+      if(typeof c === "string") n.appendChild(document.createTextNode(c));
+      else n.appendChild(c);
+    }
+    return n;
+  };
+
+  const nowISO = () => new Date().toISOString();
+  const fmt = (iso)=>{
+    try{
+      const d = new Date(iso);
+      const y=d.getFullYear();
+      const m=String(d.getMonth()+1).padStart(2,"0");
+      const dd=String(d.getDate()).padStart(2,"0");
+      const hh=String(d.getHours()).padStart(2,"0");
+      const mm=String(d.getMinutes()).padStart(2,"0");
+      return `${y}/${m}/${dd} ${hh}:${mm}`;
+    }catch{ return String(iso||""); }
+  };
+
+  const uid = () => {
+    const a = crypto.getRandomValues(new Uint8Array(10));
+    return Array.from(a).map(x=>x.toString(16).padStart(2,"0")).join("");
+  };
+
+  function loadJSON(key, fallback){
+    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch{ return fallback; }
+  }
+  function saveJSON(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
+
+  function getUserId(){
+    let id = localStorage.getItem(LS.userId);
+    if(!id){ id = uid(); localStorage.setItem(LS.userId, id); }
+    return id;
+  }
+
+  // modal
+  function showModal({title, body, actions}){
+    $("#modalTitle").textContent = title || "確認";
+    const mb = $("#modalBody");
+    mb.innerHTML = "";
+    if(typeof body === "string") mb.textContent = body;
+    else mb.appendChild(body);
+
+    const ma = $("#modalActions");
+    ma.innerHTML = "";
+    for(const a of (actions||[])) ma.appendChild(a);
+
+    $("#modalBack").classList.add("show");
+  }
+  function closeModal(){ $("#modalBack").classList.remove("show"); }
+  $("#modalBack").addEventListener("click", (e)=>{ if(e.target === $("#modalBack")) closeModal(); });
+
+  // minimal PII check
+  function hasUrl(t){ const s=String(t||"").toLowerCase(); return s.includes("http://") || s.includes("https://"); }
+  function hasEmail(t){
+    const s=String(t||"");
+    const at=s.indexOf("@");
+    if(at<=0) return false;
+    const dot=s.indexOf(".", at+2);
+    return dot>at+1;
+  }
+  function hasPhone(t){
+    const s=String(t||"");
+    let run="";
+    for(const ch of s){
+      if(ch>="0" && ch<="9"){
+        run += ch;
+        if(run.length>12) run = run.slice(run.length-12);
+        if(run.length>=10 && run[0]==="0") return true;
+      }else{
+        if(ch!=="-" && ch!==" " && ch!=="(" && ch!==")") run="";
+      }
+    }
+    return false;
+  }
+  function detectPII(text){
+    const hits=[];
+    if(hasEmail(text)) hits.push("mail");
+    if(hasPhone(text)) hits.push("phone");
+    if(hasUrl(text)) hits.push("url");
+    return hits;
+  }
+
+  // local store
+  function localStore(){ return loadJSON(LS.localStore, { posts: [] }); }
+  function saveLocalStore(s){ saveJSON(LS.localStore, s); }
+  function localUpsert(post){
+    const s = localStore();
+    const i = s.posts.findIndex(p=>p.id===post.id);
+    if(i>=0) s.posts[i] = post; else s.posts.push(post);
+    saveLocalStore(s);
+  }
+  function localList(filterFn){ return localStore().posts.filter(filterFn); }
+
+  // api
+  function withTimeout(promise, ms=9000){
+    const c = new AbortController();
+    const t = setTimeout(()=>c.abort("timeout"), ms);
+    return Promise.race([ promise(c.signal).finally(()=>clearTimeout(t)) ]);
+  }
+  async function apiFetch(path, {method="GET", body=null, headers={}}={}){
+    const url = BASE_URL + API_PREFIX + path;
+    const res = await withTimeout((signal)=>fetch(url, {
+      method,
+      headers: { "Content-Type":"application/json", ...headers },
+      body: body ? JSON.stringify(body) : null,
+      signal,
+      credentials: "omit",
+    }));
+    const text = await res.text();
+    let json=null;
+    try{ json = text ? JSON.parse(text) : null; }catch{ json = { raw:text }; }
+    if(!res.ok){
+      const msg = json?.error || json?.message || res.statusText || "request failed";
+      throw new Error(msg);
+    }
+    return json;
+  }
+
+  async function ping(){
+    try{ await apiFetch("/ping"); return true; }catch{ return false; }
+  }
+
+  async function submitPost(post){
+    if(await ping()){
+      const r = await apiFetch("/posts", { method:"POST", body: { post } });
+      return r?.post || post;
+    }
+    localUpsert(post);
+    return post;
+  }
+
+  async function listApproved(){
+    if(await ping()){
+      const r = await apiFetch("/posts?status=approved&visibility=public");
+      return r?.posts || [];
+    }
+    return localList(p=>p.status==="approved" && p.visibility==="public")
+      .sort((a,b)=>(b.updatedAt||b.createdAt).localeCompare(a.updatedAt||a.createdAt));
+  }
+
+  async function listMine(){
+    if(await ping()){
+      const r = await apiFetch(`/posts?reporterId=${encodeURIComponent(state.userId)}`);
+      return r?.posts || [];
+    }
+    return localList(p=>p.reporterId===state.userId)
+      .sort((a,b)=>(b.updatedAt||b.createdAt).localeCompare(a.updatedAt||a.createdAt));
+  }
+
+  async function vote(postId, kind){
+    if(await ping()){
+      const r = await apiFetch("/vote", { method:"POST", body: { postId, kind, voterId: state.userId } });
+      return r?.post;
+    }
+    // local vote enforcement
+    const s = localStore();
+    const p = s.posts.find(x=>x.id===postId);
+    if(!p) throw new Error("not found");
+    p._voters = p._voters || {};
+    if(p._voters[state.userId]) throw new Error("voted");
+    p._voters[state.userId] = kind;
+    if(kind === "condemn") p.votes.condemn++;
+    if(kind === "acquit") p.votes.acquit++;
+    p.updatedAt = nowISO();
+    saveLocalStore(s);
+    return p;
+  }
+
+  function adminHeaders(){ return state.admin.authed ? { "X-Admin-Token": state.admin.token } : {}; }
+
+  async function adminLogin(password){
+    if(await ping()){
+      const r = await apiFetch("/admin/login", { method:"POST", body: { password } });
+      return r;
+    }
+    if(password === "noct-admin") return { ok:true, name:"LOCAL_ADMIN", token:"local" };
+    throw new Error("invalid");
+  }
+
+  async function adminList(status){
+    if(await ping()){
+      const r = await apiFetch(`/admin/posts?status=${encodeURIComponent(status)}`, { headers: adminHeaders() });
+      return r?.posts || [];
+    }
+    return localList(p=>p.status===status)
+      .sort((a,b)=>(b.updatedAt||b.createdAt).localeCompare(a.updatedAt||a.createdAt));
+  }
+
+  async function adminModerate({postId, action, adminNote, tags}){
+    if(await ping()){
+      const r = await apiFetch("/admin/moderate", { method:"POST", headers: adminHeaders(), body: { postId, action, adminNote, tags } });
+      return r?.post;
+    }
+    const s = localStore();
+    const p = s.posts.find(x=>x.id===postId);
+    if(!p) throw new Error("not found");
+    if(action === "approve") p.status = "approved";
+    if(action === "reject") p.status = "rejected";
+    p.adminNote = (adminNote||"").slice(0,1000);
+    if(Array.isArray(tags)) p.tags = tags.map(t=>String(t).trim()).filter(Boolean).slice(0,12);
+    p.updatedAt = nowISO();
+    saveLocalStore(s);
+    return p;
+  }
+
+  function votesStore(){ return loadJSON(LS.myVotes, {}); }
+  function setVoted(postId){ const s=votesStore(); s[postId]=true; saveJSON(LS.myVotes,s); }
+  function hasVoted(postId){ return !!votesStore()[postId]; }
+
+  function loadAdminSession(){
+    const s = loadJSON(LS.adminSession, null);
+    if(s?.authed) state.admin = { ...state.admin, ...s };
+  }
+  function saveAdminSession(){ saveJSON(LS.adminSession, state.admin); }
+
+  function readAsDataURL(file){
+    return new Promise((resolve, reject)=>{
+      const fr = new FileReader();
+      fr.onload = ()=>resolve(String(fr.result||""));
+      fr.onerror = ()=>reject(fr.error || new Error("read failed"));
+      fr.readAsDataURL(file);
+    });
+  }
+  function downloadDataUrl(dataUrl, filename){
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function viewMedia(file){
+    let node;
+    if(file.type?.startsWith("image/")){
+      node = el("img", { src:file.dataUrl, style:"width:100%; border:1px solid rgba(255,255,255,.18); border-radius:12px;" });
+    }else if(file.type?.startsWith("video/")){
+      node = el("video", { src:file.dataUrl, controls:"controls", style:"width:100%; border:1px solid rgba(255,255,255,.18); border-radius:12px; background:#000;" });
+    }else{
+      node = el("div", { class:"notice bad" }, "N/A");
+    }
+    showModal({ title:"PREVIEW", body: node, actions:[ el("button", { class:"btn gray", onclick: closeModal }, "閉じる") ] });
+  }
+
+  function fileRow(f){
+    return el("div", { class:"fileRow" },
+      el("div", {},
+        el("div", { class:"name" }, f.name || "(file)"),
+        el("div", { class:"info" }, `${Math.round((f.size||0)/1024)} KB / ${f.type||""}`)
+      ),
+      el("div", { class:"actions", style:"margin-top:0;" },
+        el("button", { class:"btn small gray", onclick: ()=>viewMedia(f) }, "見る"),
+        el("button", { class:"btn small", onclick: ()=>downloadDataUrl(f.dataUrl, f.name||"download") }, "DL")
+      )
+    );
+  }
+
+  function makePost({title, body, tags, attachments}){
+    return {
+      id: "P" + uid(),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+      reporterId: state.userId,
+      title: (title||"").trim() || "(無題)",
+      body: (body||"").trim() || "",
+      tags: (tags||[]).map(t=>t.trim()).filter(Boolean).slice(0,12),
+      visibility: "public",
+      severity: "medium",
+      status: "pending",
+      adminNote: "",
+      votes: { condemn:0, acquit:0 },
+      attachments: attachments || [],
+    };
+  }
+
+  function excerpt(text, limit){
+    const t = String(text||"");
+    if(t.length <= limit) return t;
+    return t.slice(0, limit) + "\n…";
+  }
+
+  function routeTo(name){ location.hash = "#" + name; }
+  function route(){ return (location.hash||"#lobby").replace("#","") || "lobby"; }
+
+  async function refresh(){
+    state.busy = true;
+    render();
+    try{
+      const [approved, mine] = await Promise.all([ listApproved(), listMine() ]);
+      state.data.approved = approved;
+      state.data.mine = mine;
+      if(state.admin.authed){
+        const [pending, rejected, approvedAll] = await Promise.all([
+          adminList("pending"),
+          adminList("rejected"),
+          adminList("approved"),
+        ]);
+        state.data.pending = pending;
+        state.data.rejected = rejected;
+        state.data.approvedAll = approvedAll;
+      }
+    }catch{
+      // 画面に出さない（ローカルで継続）
+    }finally{
+      state.busy = false;
+      render();
+    }
+  }
+
+  // views
+  function nav(){
+    const n = $("#nav");
+    n.innerHTML = "";
+    const mk = (label, hash, cls="btn") => el("button", { class: cls, onclick: ()=>routeTo(hash), disabled: state.busy }, label);
+    n.appendChild(mk("ロビー", "lobby", "btn gray"));
+    n.appendChild(mk("自分", "mine", "btn gray"));
+    n.appendChild(mk("管理", "admin", "btn gray"));
+  }
+
+  function lobbyView(){
+    const left = el("div", { class:"card" });
+    left.appendChild(el("div", { class:"title" }, "密告"));
+
+    const title = el("input", { type:"text", placeholder:"タイトル", maxlength:"80" });
+    const body = el("textarea", { placeholder:"内容" });
+    const tags = el("input", { type:"text", placeholder:"タグ（カンマ）", maxlength:"120" });
+
+    const files = [];
+    const fileInput = el("input", { type:"file", multiple:"multiple", accept:"image/*,video/*" });
+    const fileList = el("div", { class:"fileList" });
+
+    fileInput.addEventListener("change", async ()=>{
+      fileList.innerHTML = "";
+      files.length = 0;
+      const arr = Array.from(fileInput.files||[]);
+      const maxFiles = 4;
+      const maxMB = 18;
+      for(const f of arr.slice(0, maxFiles)){
+        if(f.size > maxMB*1024*1024) continue;
+        const dataUrl = await readAsDataURL(f);
+        files.push({ id:"F"+uid(), name:f.name, type:f.type, size:f.size, dataUrl });
+      }
+      for(const f of files) fileList.appendChild(fileRow(f));
+    });
+
+    const agree = el("input", { type:"checkbox", id:"agree" });
+    const agreeRow = el("label", { for:"agree", style:"display:flex; gap:10px; align-items:center; margin-top:10px;" },
+      agree,
+      el("span", { class:"muted" }, "個人情報なし")
+    );
+
+    const send = el("button", { class:"btn", disabled: state.busy }, "密告");
+    send.addEventListener("click", async ()=>{
+      const all = `${title.value}\n${body.value}\n${tags.value}`;
+      const hits = detectPII(all);
+      if(hits.length){
+        showModal({ title:"NG", body:"個人情報の可能性", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "戻る") ] });
+        return;
+      }
+      if(!agree.checked){
+        showModal({ title:"NG", body:"チェック必要", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "OK") ] });
+        return;
+      }
+      const post = makePost({
+        title: title.value,
+        body: body.value,
+        tags: (tags.value||"").split(",").map(s=>s.trim()).filter(Boolean),
+        attachments: files.slice(0,4),
+      });
+      showModal({
+        title:"送信",
+        body: el("div", {},
+          el("div", { class:"pill warn" }, "PENDING"),
+          el("div", { style:"margin-top:10px; font-weight:900;" }, post.title),
+          el("div", { class:"meta" }, `tags ${(post.tags.join(",")||"-")}`),
+          el("div", { class:"meta" }, `添付 ${(post.attachments.length||0)}`)
+        ),
+        actions:[
+          el("button", { class:"btn gray", onclick: closeModal }, "取消"),
+          el("button", { class:"btn", onclick: async ()=>{
+            closeModal();
+            state.busy = true; render();
+            try{
+              await submitPost(post);
+              await refresh();
+            }catch{}
+            state.busy = false; render();
+          } }, "確定")
+        ]
+      });
+    });
+
+    left.appendChild(el("div", { class:"notice" }, "個人情報禁止"));
+
+    left.appendChild(el("label", { text:"タイトル" }));
+    left.appendChild(title);
+    left.appendChild(el("label", { text:"内容" }));
+    left.appendChild(body);
+    left.appendChild(el("label", { text:"タグ" }));
+    left.appendChild(tags);
+    left.appendChild(el("label", { text:"添付" }));
+    left.appendChild(fileInput);
+    left.appendChild(fileList);
+    left.appendChild(agreeRow);
+    left.appendChild(el("div", { class:"actions" },
+      send,
+      el("button", { class:"btn gray", onclick: ()=>refresh(), disabled: state.busy }, state.busy ? "..." : "更新")
+    ));
+
+    const right = el("div", { class:"card" });
+    right.appendChild(el("div", { class:"title" }, "見る"));
+
+    const list = el("div", { class:"list" });
+    const posts = (state.data.approved||[]).slice().sort((a,b)=>(b.updatedAt||b.createdAt).localeCompare(a.updatedAt||a.createdAt));
+
+    if(!posts.length){
+      list.appendChild(el("div", { class:"notice bad" }, "なし"));
+    }else{
+      for(const p of posts){
+        list.appendChild(publicPost(p));
+      }
+    }
+
+    right.appendChild(list);
+
+    return el("div", { class:"grid" }, left, right);
+  }
+
+  function publicPost(p){
+    const node = el("div", { class:"post" });
+
+    node.appendChild(el("div", { class:"postHead" },
+      el("div", { class:"postTitle" }, p.title || "(無題)"),
+      el("div", { class:"pill ok" }, "APPROVED")
+    ));
+
+    node.appendChild(el("div", { class:"meta" },
+      el("span", {}, fmt(p.createdAt)),
+      el("span", {}, `断罪 ${p.votes?.condemn||0}`),
+      el("span", {}, `無罪 ${p.votes?.acquit||0}`)
+    ));
+
+    node.appendChild(el("div", { class:"body" }, excerpt(p.body, 520)));
+
+    const tagLine = (p.tags||[]).map(t=>"#"+t).join(" ");
+    if(tagLine) node.appendChild(el("div", { class:"tags" }, tagLine));
+
+    const voted = hasVoted(p.id);
+    const a = el("div", { class:"actions" },
+      el("button", { class:"btn small", disabled: voted || state.busy, onclick: async ()=>{ await doVote(p.id, "condemn"); } }, voted ? "投票済" : "断罪"),
+      el("button", { class:"btn small", disabled: voted || state.busy, onclick: async ()=>{ await doVote(p.id, "acquit"); } }, voted ? "投票済" : "無罪")
+    );
+    node.appendChild(a);
+
+    return node;
+  }
+
+  async function doVote(postId, kind){
+    if(hasVoted(postId)) return;
+    state.busy = true; render();
+    try{
+      const updated = await vote(postId, kind);
+      setVoted(postId);
+      const a = state.data.approved || [];
+      const i = a.findIndex(x=>x.id===postId);
+      if(i>=0) a[i] = updated;
+    }catch{}
+    state.busy = false; render();
+  }
+
+  function mineView(){
+    const box = el("div", { class:"card" });
+    box.appendChild(el("div", { class:"title" }, "自分"));
+
+    const list = el("div", { class:"list" });
+    const mine = (state.data.mine||[]).slice().sort((a,b)=>(b.updatedAt||b.createdAt).localeCompare(a.updatedAt||a.createdAt));
+
+    if(!mine.length){
+      list.appendChild(el("div", { class:"notice bad" }, "なし"));
+    }else{
+      for(const p of mine){
+        list.appendChild(minePost(p));
+      }
+    }
+
+    box.appendChild(el("div", { class:"actions" },
+      el("button", { class:"btn gray", onclick: ()=>routeTo("lobby"), disabled: state.busy }, "ロビー"),
+      el("button", { class:"btn gray", onclick: ()=>refresh(), disabled: state.busy }, state.busy ? "..." : "更新")
+    ));
+
+    box.appendChild(list);
+    return box;
+  }
+
+  function minePost(p){
+    const node = el("div", { class:"post" });
+    const pill = p.status === "approved" ? el("div", { class:"pill ok" }, "APPROVED") : p.status === "rejected" ? el("div", { class:"pill bad" }, "REJECTED") : el("div", { class:"pill warn" }, "PENDING");
+
+    node.appendChild(el("div", { class:"postHead" },
+      el("div", { class:"postTitle" }, p.title || "(無題)"),
+      pill
+    ));
+    node.appendChild(el("div", { class:"meta" },
+      el("span", {}, fmt(p.createdAt)),
+      el("span", {}, `添付 ${(p.attachments?.length||0)}`)
+    ));
+    node.appendChild(el("div", { class:"body" }, excerpt(p.body, 900)));
+
+    const tagLine = (p.tags||[]).map(t=>"#"+t).join(" ");
+    if(tagLine) node.appendChild(el("div", { class:"tags" }, tagLine));
+
+    if(p.adminNote){
+      node.appendChild(el("div", { class:"notice bad", style:"margin-top:10px;" }, p.adminNote));
+    }
+
+    if(p.attachments?.length){
+      const fl = el("div", { class:"fileList" });
+      for(const f of p.attachments) fl.appendChild(fileRow(f));
+      node.appendChild(fl);
+    }
+
+    return node;
+  }
+
+  function adminView(){
+    const box = el("div", { class:"card" });
+    box.appendChild(el("div", { class:"title" }, "管理"));
+
+    if(!state.admin.authed){
+      const pw = el("input", { type:"password", placeholder:"password" });
+      const login = el("button", { class:"btn", disabled: state.busy }, "ログイン");
+      login.addEventListener("click", async ()=>{
+        state.busy = true; render();
+        try{
+          const r = await adminLogin(pw.value);
+          state.admin.authed = true;
+          state.admin.name = r?.name || "ADMIN";
+          state.admin.token = r?.token || "";
+          saveAdminSession();
+          await refresh();
+        }catch{}
+        state.busy = false; render();
+      });
+      box.appendChild(pw);
+      box.appendChild(el("div", { class:"actions" }, login, el("button", { class:"btn gray", onclick: ()=>routeTo("lobby") }, "ロビー")));
+      return box;
+    }
+
+    const tab = { v:"pending" };
+    const tabs = el("div", { class:"actions" },
+      el("button", { class:"btn small gray", onclick: ()=>{ tab.v="pending"; render(); } }, `未処理 ${(state.data.pending||[]).length}`),
+      el("button", { class:"btn small gray", onclick: ()=>{ tab.v="approvedAll"; render(); } }, `承認 ${(state.data.approvedAll||[]).length}`),
+      el("button", { class:"btn small gray", onclick: ()=>{ tab.v="rejected"; render(); } }, `却下 ${(state.data.rejected||[]).length}`)
+    );
+
+    const list = el("div", { class:"list" });
+    const items = (
+      tab.v === "pending" ? (state.data.pending||[]) :
+      tab.v === "rejected" ? (state.data.rejected||[]) :
+      (state.data.approvedAll||[])
+    ).slice().sort((a,b)=>(b.updatedAt||b.createdAt).localeCompare(a.updatedAt||a.createdAt));
+
+    if(!items.length){
+      list.appendChild(el("div", { class:"notice bad" }, "なし"));
+    }else{
+      for(const p of items){
+        const node = el("div", { class:"post" });
+        const pill = p.status === "approved" ? el("div", { class:"pill ok" }, "APPROVED") : p.status === "rejected" ? el("div", { class:"pill bad" }, "REJECTED") : el("div", { class:"pill warn" }, "PENDING");
+        node.appendChild(el("div", { class:"postHead" },
+          el("div", { class:"postTitle" }, p.title || "(無題)"),
+          pill
+        ));
+        node.appendChild(el("div", { class:"meta" },
+          el("span", {}, fmt(p.createdAt)),
+          el("span", {}, `添付 ${(p.attachments?.length||0)}`)
+        ));
+        node.appendChild(el("div", { class:"body" }, excerpt(p.body, 320)));
+        node.appendChild(el("div", { class:"actions" },
+          el("button", { class:"btn small", onclick: ()=>openAdminPost(p) }, "開く")
+        ));
+        list.appendChild(node);
+      }
+    }
+
+    box.appendChild(el("div", { class:"actions" },
+      el("button", { class:"btn gray", onclick: ()=>routeTo("lobby") }, "ロビー"),
+      el("button", { class:"btn gray", onclick: ()=>refresh(), disabled: state.busy }, state.busy ? "..." : "更新"),
+      el("button", { class:"btn gray", onclick: ()=>{
+        state.admin = { authed:false, name:"", token:"" };
+        saveAdminSession();
+        refresh();
+      } }, "ログアウト")
+    ));
+
+    box.appendChild(tabs);
+    box.appendChild(list);
+    return box;
+  }
+
+  function openAdminPost(p){
+    const tagEdit = el("input", { type:"text", placeholder:"tags" });
+    tagEdit.value = (p.tags||[]).join(",");
+
+    const note = el("textarea", { placeholder:"note" });
+    note.value = p.adminNote || "";
+
+    const wrap = el("div", {},
+      el("div", { class:"pill warn" }, `id ${p.id}`),
+      el("div", { class:"meta" }, `reporter ${p.reporterId||"-"}`),
+      el("div", { class:"body", style:"margin-top:10px;" }, p.body || ""),
+      el("div", { style:"margin-top:10px;" }, el("label", { text:"tags" }), tagEdit),
+      el("div", { style:"margin-top:10px;" }, el("label", { text:"note" }), note)
+    );
+
+    if(p.attachments?.length){
+      const fl = el("div", { class:"fileList" });
+      for(const f of p.attachments) fl.appendChild(fileRow(f));
+      wrap.appendChild(fl);
+    }
+
+    const approve = el("button", { class:"btn" }, "承認");
+    const reject  = el("button", { class:"btn" }, "却下");
+
+    approve.addEventListener("click", async ()=>{ closeModal(); await doModerate(p, "approve", note.value, tagEdit.value); });
+    reject.addEventListener("click", async ()=>{ closeModal(); await doModerate(p, "reject", note.value, tagEdit.value); });
+
+    showModal({
+      title: "管理",
+      body: wrap,
+      actions: [
+        el("button", { class:"btn gray", onclick: closeModal }, "閉じる"),
+        reject,
+        approve
+      ]
+    });
+  }
+
+  async function doModerate(p, action, adminNote, tagsCsv){
+    state.busy = true; render();
+    try{
+      const tags = (tagsCsv||"").split(",").map(s=>s.trim()).filter(Boolean);
+      await adminModerate({ postId: p.id, action, adminNote, tags });
+      await refresh();
+    }catch{}
+    state.busy = false; render();
+  }
+
+  function render(){
+    nav();
+    const r = route();
+    state.route = r;
+    const root = $("#root");
+    root.innerHTML = "";
+    if(r === "lobby") root.appendChild(lobbyView());
+    else if(r === "mine") root.appendChild(mineView());
+    else if(r === "admin") root.appendChild(adminView());
+    else root.appendChild(lobbyView());
+  }
+
+  // init
+  state.userId = getUserId();
+  loadAdminSession();
+
+  window.addEventListener("hashchange", render);
+  render();
+  refresh();
+})();
+</script>
 </body>
 </html>
