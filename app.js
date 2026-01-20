@@ -1,5 +1,9 @@
 (() => {
   "use strict";
+  const APP_VERSION = "v1.0.3";
+  const LOG_KEY = "tkn_log_v1";
+  const LOG_MAX = 600;
+
   const BASE_URL = ""; // 例: "https://your-server.example.com"
   const API_PREFIX = "/api/diary";
 
@@ -31,6 +35,28 @@
   }
   function saveJSON(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
 
+  function logLine(msg){
+    try{
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2,"0");
+      const mm = String(now.getMinutes()).padStart(2,"0");
+      const ss = String(now.getSeconds()).padStart(2,"0");
+      const line = `[${hh}:${mm}:${ss}] ${msg}`;
+      const arr = loadJSON(LOG_KEY, []);
+      const next = Array.isArray(arr) ? arr : [];
+      next.push(line);
+      if(next.length > LOG_MAX) next.splice(0, next.length - LOG_MAX);
+      localStorage.setItem(LOG_KEY, JSON.stringify(next));
+    }catch{}
+  }
+  function readLogs(){
+    const arr = loadJSON(LOG_KEY, []);
+    return Array.isArray(arr) ? arr : [];
+  }
+  function clearLogs(){
+    try{ localStorage.removeItem(LOG_KEY); }catch{}
+  }
+
   function getUserId(){
     let id = localStorage.getItem(LS.userId);
     if(!id){ id = "U"+uid(); localStorage.setItem(LS.userId, id); }
@@ -53,6 +79,8 @@
   };
 
   function showModal({title, body, actions}){
+    const back = $("#modalBack");
+    if(back) back.style.display = "flex";
     $("#modalTitle").textContent = title || "";
     const mb = $("#modalBody");
     mb.innerHTML = "";
@@ -66,11 +94,12 @@
     for(const a of (actions||[])) ma.appendChild(a);
     $("#modalBack").classList.add("show");
   }
-  function closeModal(){ $("#modalBack").classList.remove("show"); }
+  function closeModal(){ const back = $("#modalBack"); if(back){ back.classList.remove("show"); back.style.display = "none"; } }
   $("#modalBack")?.addEventListener("click", (e)=>{ if(e.target === $("#modalBack")) closeModal(); });
 
   function apiUrl(path){ return (BASE_URL || "") + API_PREFIX + path; }
   async function apiFetch(path, {method="GET", body=null, headers={}}={}){
+    logLine(`${method} ${path}`);
     const res = await fetch(apiUrl(path), {
       method,
       headers: { "Content-Type":"application/json", ...headers },
@@ -82,8 +111,10 @@
     try{ json = text ? JSON.parse(text) : null; }catch{ json = { raw:text }; }
     if(!res.ok){
       const msg = json?.error || json?.message || res.statusText || "error";
+      logLine(`ERR ${method} ${path} ${msg}`);
       throw new Error(msg);
     }
+    logLine(`OK ${method} ${path} ${res.status}`);
     return json;
   }
 
@@ -203,7 +234,30 @@
     );
   }
 
-  function mountHeader(){
+  
+  function mountHud(){
+    const v = document.getElementById("versionBadge");
+    if(v) v.textContent = APP_VERSION;
+    const b = document.getElementById("logFab");
+    if(b && !b.dataset.bound){
+      b.dataset.bound = "1";
+      b.addEventListener("click", ()=>{
+        const logs = readLogs();
+        const pre = el("pre", { style:"margin:0; white-space:pre-wrap; font-family:inherit; font-weight:900;" }, logs.join("\n") || "");
+        showModal({
+          title:"LOG",
+          body: pre,
+          actions: [
+            el("button", { class:"btn gray", onclick: ()=>{ try{ navigator.clipboard.writeText(logs.join("\n")); }catch{} } }, "コピー"),
+            el("button", { class:"btn", onclick: ()=>{ clearLogs(); closeModal(); } }, "消去"),
+            el("button", { class:"btn gray", onclick: closeModal }, "閉じる"),
+          ]
+        });
+      });
+    }
+  }
+
+function mountHeader(){
     const logo = $("#logo");
     const nav = $("#nav");
     if(logo) logo.textContent = "たのしいこと日記";
@@ -786,7 +840,11 @@
   }
 
   function init(){
+    mountHud();
+
     const page = document.documentElement.dataset.page || "";
+    logLine(`boot ${page}`);
+
     if(page === "lobby") return pageLobby();
     if(page === "write") return pageWrite();
     if(page === "read") return pageRead();

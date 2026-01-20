@@ -112,3 +112,34 @@ label{ display:block; margin: 10px 0 6px; color: var(--muted); font-size: 14px; 
 .modal .modalActions{ display:flex; justify-content:flex-end; gap: 10px; flex-wrap:wrap; margin-top: 12px; }
 
 .sep{ height:1px; background: rgba(255,255,255,.10); margin: 10px 0; }
+
+
+/* HUD */
+.logFab{
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 98;
+  width: 76px;
+  height: 56px;
+  border-radius: 14px;
+  font-weight: 900;
+  font-size: 18px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: var(--red);
+  color: var(--text);
+}
+.logFab:active{ transform: translateY(1px); }
+.versionBadge{
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 98;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(0,0,0,.70);
+  color: rgba(255,255,255,.86);
+  font-weight: 900;
+  font-size: 14px;
+}

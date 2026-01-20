@@ -4,7 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>たのしいこと日記</title>
-  <link rel="stylesheet" href="assets/app.css" />
+  
+  <style>
+    html,body{height:100%;margin:0;background:#000;color:#fff;font-family:ui-monospace,Menlo,Consolas,"MS Gothic",monospace;}
+    a{color:inherit;}
+    #modalBack{display:none;}
+    .home{min-height:calc(100vh - 120px);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;padding:16px;}
+    .home h1{margin:0;font-size:34px;font-weight:900;letter-spacing:.10em;text-align:center;}
+    .ctaRow{width:min(640px,100%);display:flex;flex-direction:column;gap:14px;}
+    @media(min-width:520px){.ctaRow{flex-direction:row}.ctaRow .btn{flex:1}}
+    .btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer;user-select:none;
+      background:#b00000;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:16px 18px;font-weight:900;font-size:20px;}
+    .btn:active{transform:translateY(1px);}
+    .logFab{position:fixed;right:14px;bottom:14px;z-index:98;width:76px;height:56px;border-radius:14px;font-weight:900;font-size:18px;border:1px solid rgba(255,255,255,.18);background:#b00000;color:#fff;}
+    .versionBadge{position:fixed;left:14px;bottom:14px;z-index:98;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.70);color:rgba(255,255,255,.86);font-weight:900;font-size:14px;}
+  </style>
+<link rel="stylesheet" href="app.css" />
 </head>
 <body>
   <div class="wrap">
@@ -15,7 +30,7 @@
     <div id="root"></div>
   </div>
 
-  <div class="modalBack" id="modalBack" role="dialog" aria-modal="true">
+  <div class="modalBack" id="modalBack" role="dialog" aria-modal="true" style="display:none">
     <div class="modal">
       <h3 id="modalTitle">確認</h3>
       <div id="modalBody"></div>
@@ -23,6 +38,9 @@
     </div>
   </div>
 
-  <script src="assets/app.js"></script>
+  <script src="app.js"></script>
+
+  <div class="versionBadge" id="versionBadge">v1.0.3</div>
+  <button class="logFab" id="logFab">LOG</button>
 </body>
 </html>
