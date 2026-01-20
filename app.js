@@ -1,7 +1,7 @@
 (() => {
   "use strict";
-  const APP_VERSION = "v1.0.8";
-  const BASE_URL = ""; // 例: "https://your-server.example.com"
+  const APP_VERSION = "v1.0.9";
+  const BASE_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "https://hate-server.onrender.com";
   const API_PREFIX = "/api/diary";
 
   const LS = { userId:"tkn_user_id_v1", liked:"tkn_liked_v1", adminSession:"tkn_admin_session_v1" };
