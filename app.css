@@ -115,21 +115,6 @@ label{ display:block; margin: 10px 0 6px; color: var(--muted); font-size: 14px; 
 
 
 /* HUD */
-.logFab{
-  position: fixed;
-  right: 14px;
-  bottom: 14px;
-  z-index: 98;
-  width: 76px;
-  height: 56px;
-  border-radius: 14px;
-  font-weight: 900;
-  font-size: 18px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: var(--red);
-  color: var(--text);
-}
-.logFab:active{ transform: translateY(1px); }
 .versionBadge{
   position: fixed;
   left: 14px;

@@ -1,9 +1,6 @@
 (() => {
   "use strict";
-  const APP_VERSION = "v1.0.6";
-  const LOG_KEY = "tkn_log_v1";
-  const LOG_MAX = 600;
-
+  const APP_VERSION = "v1.0.7";
   const BASE_URL = ""; // 例: "https://your-server.example.com"
   const API_PREFIX = "/api/diary";
 
@@ -35,27 +32,7 @@
   }
   function saveJSON(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
 
-  function logLine(msg){
-    try{
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2,"0");
-      const mm = String(now.getMinutes()).padStart(2,"0");
-      const ss = String(now.getSeconds()).padStart(2,"0");
-      const line = `[${hh}:${mm}:${ss}] ${msg}`;
-      const arr = loadJSON(LOG_KEY, []);
-      const next = Array.isArray(arr) ? arr : [];
-      next.push(line);
-      if(next.length > LOG_MAX) next.splice(0, next.length - LOG_MAX);
-      localStorage.setItem(LOG_KEY, JSON.stringify(next));
-    }catch{}
-  }
-  function readLogs(){
-    const arr = loadJSON(LOG_KEY, []);
-    return Array.isArray(arr) ? arr : [];
-  }
-  function clearLogs(){
-    try{ localStorage.removeItem(LOG_KEY); }catch{}
-  }
+  function logLine(_msg){}
 
   function getUserId(){
     let id = localStorage.getItem(LS.userId);
@@ -117,7 +94,6 @@
 
   function apiUrl(path){ return (BASE_URL || "") + API_PREFIX + path; }
   async function apiFetch(path, {method="GET", body=null, headers={}}={}){
-    logLine(`${method} ${path}`);
     const res = await fetch(apiUrl(path), {
       method,
       headers: { "Content-Type":"application/json", ...headers },
@@ -129,10 +105,8 @@
     try{ json = text ? JSON.parse(text) : null; }catch{ json = { raw:text }; }
     if(!res.ok){
       const msg = json?.error || json?.message || res.statusText || "error";
-      logLine(`ERR ${method} ${path} ${msg}`);
       throw new Error(msg);
     }
-    logLine(`OK ${method} ${path} ${res.status}`);
     return json;
   }
 
@@ -251,29 +225,6 @@
       )
     );
   }
-
-  
-  function mountHud(){
-    const v = document.getElementById("versionBadge");
-    if(v) v.textContent = APP_VERSION;
-    const b = document.getElementById("logFab");
-    if(b && !b.dataset.bound){
-      b.dataset.bound = "1";
-      b.addEventListener("click", ()=>{
-        const logs = readLogs();
-        const pre = el("pre", { style:"margin:0; white-space:pre-wrap; font-family:inherit; font-weight:900;" }, logs.join("\n") || "");
-        showModal({
-          title:"LOG",
-          body: pre,
-          actions: [
-            el("button", { class:"btn gray", onclick: ()=>{ try{ navigator.clipboard.writeText(logs.join("\n")); }catch{} } }, "コピー"),
-            el("button", { class:"btn", onclick: ()=>{ clearLogs(); closeModal(); } }, "消去"),
-            el("button", { class:"btn gray", onclick: closeModal }, "閉じる"),
-          ]
-        });
-      });
-    }
-  }
   function mountHeader(){
     const logo = $("#logo");
     const nav = $("#nav");
@@ -354,7 +305,7 @@
         tagWrap.appendChild(b);
       }
     };
-    const addTag = el("button", { class:"btn small" }, "追加");
+    const addTag = el("button", { class:"btn small" }, "新しいタグを追加");
     addTag.addEventListener("click", ()=>{
       const v = String(tagInput.value||"").trim();
       if(!v) return;
@@ -366,6 +317,10 @@
 
     const submit = el("button", { class:"btn" }, "立てる");
     const refreshBtn = el("button", { class:"btn gray" }, "更新");
+    const searchInput = el("input", { type:"text", placeholder:"検索", maxlength:"40" });
+    searchInput.addEventListener("input", ()=>{ state.query = String(searchInput.value||""); renderList(); });
+    state.query = "";
+
 
     async function refresh(){
       state.busy = true;
@@ -437,13 +392,21 @@
       box.innerHTML = "";
       box.appendChild(el("div", { class:"title" }, "スレ一覧"));
       box.appendChild(sortButtons(state, refresh));
+      box.appendChild(el("div", { class:"row" }, searchInput));
       box.appendChild(el("div", { class:"row" }, refreshBtn));
 
       const list = el("div", { class:"threadList" });
       if(!state.threads.length){
         list.appendChild(el("div", { style:"padding:12px; color: rgba(255,255,255,.70); font-weight:900;" }, "なし"));
       }else{
-        state.threads.forEach((t, idx)=> list.appendChild(threadRowItem(t, idx, state.sort, "read")));
+        const q = String(state.query||"").trim().toLowerCase();
+        const filtered = q ? state.threads.filter(t=>{
+          const title = String(t.title||"").toLowerCase();
+          const body = String(t.body||"").toLowerCase();
+          const tags = Array.isArray(t.tags) ? t.tags.map(x=>String(x||"").toLowerCase()) : [];
+          return title.includes(q) || body.includes(q) || tags.some(x=>x.includes(q));
+        }) : state.threads;
+        filtered.forEach((t, idx)=> list.appendChild(threadRowItem(t, idx, state.sort, "read")));
       }
       box.appendChild(el("div", { class:"sep" }));
       box.appendChild(list);
@@ -862,11 +825,7 @@ const fileInput = el("input", { type:"file", multiple:"multiple", accept:"image/
   }
 
   function init(){
-    mountHud();
-
     const page = document.documentElement.dataset.page || "";
-    logLine(`boot ${page}`);
-
     if(page === "lobby") return pageLobby();
     if(page === "write") return pageWrite();
     if(page === "read") return pageRead();
