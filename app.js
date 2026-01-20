@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_VERSION = "v1.0.9";
+  const APP_VERSION = "v1.1.0";
   const BASE_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "https://hate-server.onrender.com";
   const API_PREFIX = "/api/diary";
 
@@ -881,3 +881,7 @@ const fileInput = el("input", { type:"file", multiple:"multiple", accept:"image/
   }
   window.addEventListener("DOMContentLoaded", init);
 })();
+function loadFavSet(){ try{return new Set(JSON.parse(localStorage.getItem("tkn_fav_diary_v1")||"[]"));}catch{return new Set();}}
+function saveFavSet(s){ localStorage.setItem("tkn_fav_diary_v1", JSON.stringify(Array.from(s))); }
+function isFav(id){ return loadFavSet().has(String(id)); }
+function toggleFav(id){ const s=loadFavSet(); const k=String(id); s.has(k)?s.delete(k):s.add(k); saveFavSet(s); return s.has(k); }
