@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_VERSION = "v1.0.4";
+  const APP_VERSION = "v1.0.6";
   const LOG_KEY = "tkn_log_v1";
   const LOG_MAX = 600;
 
@@ -97,15 +97,20 @@
   function closeModal(){ const back = $("#modalBack"); if(back){ back.classList.remove("show"); back.style.display = "none"; } }
   $("#modalBack")?.addEventListener("click", (e)=>{ if(e.target === $("#modalBack")) closeModal(); });
 
+  const GUARD = {
+    post: "個人情報/誹謗中傷/無断転載 禁止\n投稿=同意",
+    media: "個人情報/第三者の無断撮影 禁止\n申請=同意",
+    verify: "本人確認画像 送信\n送信=同意",
+  };
 
   function confirmGuard(text, onOk){
-    logLine(`GUARD`);
+    logLine("GUARD");
     showModal({
       title: "確認",
       body: text,
       actions: [
         el("button", { class:"btn gray", onclick: closeModal }, "戻る"),
-        el("button", { class:"btn", onclick: ()=>{ closeModal(); try{ onOk(); }catch{} } }, "了承")
+        el("button", { class:"btn", onclick: ()=>{ closeModal(); try{ onOk && onOk(); }catch{} } }, "了承"),
       ]
     });
   }
@@ -269,8 +274,7 @@
       });
     }
   }
-
-function mountHeader(){
+  function mountHeader(){
     const logo = $("#logo");
     const nav = $("#nav");
     if(logo) logo.textContent = "たのしいこと日記";
@@ -278,7 +282,8 @@ function mountHeader(){
     nav.innerHTML = "";
     const mk = (label, href)=> el("a", { href, class:"btn gray small" }, label);
     nav.appendChild(mk("ロビー","index.html"));
-    }
+  }
+
 
   function sortButtons(state, refresh){
     const mk = (label, value)=> el("button", {
@@ -387,26 +392,18 @@ function mountHeader(){
       right.appendChild(list);
     }
 
-    submit.addEventListener("click", async ()=>{
-      confirmGuard("個人情報/誹謗中傷/無断転載 禁止
-投稿=同意", async ()=>{
-        state.busy = true; submit.disabled = true; refreshBtn.disabled = true;
-        try{
-          const th = await createThread({ title: title.value, body: body.value, tags, authorId: state.userId });
-          location.href = `thread.html?id=${encodeURIComponent(th.id)}&mode=write`;
-          return;
-        }catch(e){
-          showModal({ title:"確認", body:"ERROR", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "閉じる") ] });
-        }
-        state.busy = false; submit.disabled = false; refreshBtn.disabled = false;
+    submit.addEventListener("click", ()=>{
+      confirmGuard(GUARD.post, async ()=>{
+              state.busy = true; submit.disabled = true; refreshBtn.disabled = true;
+              try{
+                const th = await createThread({ title: title.value, body: body.value, tags, authorId: state.userId });
+                location.href = `thread.html?id=${encodeURIComponent(th.id)}&mode=write`;
+                return;
+              }catch(e){
+                showModal({ title:"確認", body:"ERROR", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "閉じる") ] });
+              }
+              state.busy = false; submit.disabled = false; refreshBtn.disabled = false;
       });
-    });
-location.href = `thread.html?id=${encodeURIComponent(th.id)}&mode=write`;
-        return;
-      }catch(e){
-        showModal({ title:"確認", body:"ERROR", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "閉じる") ] });
-      }
-      state.busy = false; submit.disabled = false; refreshBtn.disabled = false;
     });
 
     refreshBtn.addEventListener("click", refresh);
@@ -569,8 +566,7 @@ location.href = `thread.html?id=${encodeURIComponent(th.id)}&mode=write`;
       });
       const verifyBtn = el("button", { class:"btn small gray" }, state.verified ? "本人確認済" : "本人確認");
       verifyBtn.addEventListener("click", ()=>{
-        confirmGuard("本人確認画像 送信
-送信=同意", ()=>{ verifyInput.value=""; verifyInput.click(); });
+        confirmGuard(GUARD.verify, ()=>{ verifyInput.value=""; verifyInput.click(); });
       });
 const fileInput = el("input", { type:"file", multiple:"multiple", accept:"image/*,video/*", style:"display:none" });
       const pickedList = el("div", { class:"fileList" });
@@ -602,43 +598,31 @@ const fileInput = el("input", { type:"file", multiple:"multiple", accept:"image/
         if(!state.verified){
           showModal({ title:"確認", body:"", actions:[
             el("button", { class:"btn gray", onclick: closeModal }, "閉じる"),
-            el("button", { class:"btn", onclick: ()=>{ closeModal(); confirmGuard("本人確認画像 送信
-送信=同意", ()=>{ verifyInput.value=""; verifyInput.click(); }); } }, "本人確認")
+            el("button", { class:"btn", onclick: ()=>{ closeModal(); confirmGuard(GUARD.verify, ()=>{ verifyInput.value=""; verifyInput.click(); }); } }, "本人確認")
           ] });
           return;
         }
-        confirmGuard("個人情報/第三者の無断撮影 禁止
-申請=同意", ()=>{ fileInput.value=""; fileInput.click(); });
+        confirmGuard(GUARD.media, ()=>{ fileInput.value=""; fileInput.click(); });
       });
-const sendBtn = el("button", { class:"btn" }, "送信");
-      sendBtn.addEventListener("click", async ()=>{
-        confirmGuard("個人情報/誹謗中傷/無断転載 禁止
-投稿=同意", async ()=>{
-          state.busy = true; sendBtn.disabled = true;
-          try{
-            const post = await addPost(t.id, body.value, state.userId);
-            if(state.verified){
-              for(const f of picked){
-                try{ await requestAttachment({ threadId: t.id, postId: post.id, requesterId: state.userId, file: f }); }catch(e){}
-              }
-            }
-            body.value = ""; picked.length=0; pickedList.innerHTML="";
-          }catch(e){
-            showModal({ title:"確認", body:"ERROR", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "閉じる") ] });
-          }
-          state.busy = false; sendBtn.disabled = false;
-          await refreshThread();
+
+      const sendBtn = el("button", { class:"btn" }, "送信");
+      sendBtn.addEventListener("click", ()=>{
+        confirmGuard(GUARD.post, async ()=>{
+                  state.busy = true; sendBtn.disabled = true;
+                  try{
+                    const post = await addPost(t.id, body.value, state.userId);
+                    if(state.verified){
+                      for(const f of picked){
+                        try{ await requestAttachment({ threadId: t.id, postId: post.id, requesterId: state.userId, file: f }); }catch(e){}
+                      }
+                    }
+                    body.value = ""; picked.length=0; pickedList.innerHTML="";
+                  }catch(e){
+                    showModal({ title:"確認", body:"ERROR", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "閉じる") ] });
+                  }
+                  state.busy = false; sendBtn.disabled = false;
+                  await refreshThread();
         });
-      });
-}catch(e){}
-            }
-          }
-          body.value = ""; picked.length=0; pickedList.innerHTML="";
-        }catch(e){
-          showModal({ title:"確認", body:"ERROR", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "閉じる") ] });
-        }
-        state.busy = false; sendBtn.disabled = false;
-        await refreshThread();
       });
 
       form.appendChild(el("div", { class:"row" }, verifyBtn, attachBtn));
