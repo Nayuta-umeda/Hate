@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_VERSION = "v1.0.7";
+  const APP_VERSION = "v1.0.8";
   const BASE_URL = ""; // 例: "https://your-server.example.com"
   const API_PREFIX = "/api/diary";
 
@@ -245,7 +245,32 @@
     return el("div", { class:"row" }, mk("新着","new"), mk("いいね(日)","like_day"), mk("いいね(週)","like_week"), mk("いいね(月)","like_month"));
   }
 
-  function threadRowItem(t, idx, sort, mode){
+  
+  function tagFilterRow(state, rerender){
+    const all = new Set();
+    (state.threads||[]).forEach(t=>{
+      (Array.isArray(t.tags)?t.tags:[]).forEach(x=>{ if(x) all.add(String(x)); });
+    });
+    const tags = Array.from(all).slice(0, 60);
+    const row = el("div", { class:"row", style:"flex-wrap:wrap; gap:8px;" });
+    const clearBtn = el("button", { class:"btn small gray" }, "全解除");
+    clearBtn.addEventListener("click", ()=>{ state.tagSel = []; rerender && rerender(); });
+    row.appendChild(clearBtn);
+    tags.forEach(tag=>{
+      const on = (state.tagSel||[]).includes(tag);
+      const b = el("button", { class: on ? "btn small" : "btn small gray" }, tag);
+      b.addEventListener("click", ()=>{
+        const cur = new Set(state.tagSel||[]);
+        if(cur.has(tag)) cur.delete(tag); else cur.add(tag);
+        state.tagSel = Array.from(cur);
+        rerender && rerender();
+      });
+      row.appendChild(b);
+    });
+    return row;
+  }
+
+function threadRowItem(t, idx, sort, mode){
     const lk = sort==="like_day" ? (t.likeDay||0) : sort==="like_week" ? (t.likeWeek||0) : sort==="like_month" ? (t.likeMonth||0) : (t.likeMonth||0);
     const titleBtn = el("div", { class:"tTitle" }, t.title || "(無題)");
     titleBtn.addEventListener("click", ()=>{ location.href = `thread.html?id=${encodeURIComponent(t.id)}&mode=${encodeURIComponent(mode)}`; });
@@ -284,8 +309,8 @@
 
     const state = { busy:false, sort:"new", threads:[], userId:getUserId() };
 
-    const left = el("div", { class:"card" }, el("div", { class:"title" }, "新スレ"));
-    const right = el("div", { class:"card" }, el("div", { class:"title" }, "スレ一覧"));
+    const left = el("div", { class:"card" }, el("div", { class:"title" }, "新日記"));
+    const right = el("div", { class:"card" }, el("div", { class:"title" }, "日記一覧"));
 
     const title = el("input", { type:"text", placeholder:"タイトル", maxlength:"80" });
     const body  = el("textarea", { placeholder:"本文" });
@@ -320,6 +345,9 @@
     const searchInput = el("input", { type:"text", placeholder:"検索", maxlength:"40" });
     searchInput.addEventListener("input", ()=>{ state.query = String(searchInput.value||""); renderList(); });
     state.query = "";
+    state.onlyFav = false;
+    state.tagSel = [];
+
 
 
     async function refresh(){
@@ -334,7 +362,7 @@
 
     function renderList(){
       right.innerHTML = "";
-      right.appendChild(el("div", { class:"title" }, "スレ一覧"));
+      right.appendChild(el("div", { class:"title" }, "日記一覧"));
       right.appendChild(sortButtons(state, refresh));
 
       const list = el("div", { class:"threadList" });
@@ -352,6 +380,7 @@
               state.busy = true; submit.disabled = true; refreshBtn.disabled = true;
               try{
                 const th = await createThread({ title: title.value, body: body.value, tags, authorId: state.userId });
+          try{ addFav(th.id); }catch{}
                 location.href = `thread.html?id=${encodeURIComponent(th.id)}&mode=write`;
                 return;
               }catch(e){
@@ -377,7 +406,7 @@
     mountHeader();
     const root = $("#root"); root.innerHTML = "";
     const state = { busy:false, sort:"new", threads:[] };
-    const box = el("div", { class:"card" }, el("div", { class:"title" }, "スレ一覧"));
+    const box = el("div", { class:"card" }, el("div", { class:"title" }, "日記一覧"));
     const refreshBtn = el("button", { class:"btn gray" }, "更新");
 
     async function refresh(){
@@ -390,8 +419,14 @@
 
     function renderList(){
       box.innerHTML = "";
-      box.appendChild(el("div", { class:"title" }, "スレ一覧"));
+      box.appendChild(el("div", { class:"title" }, "日記一覧"));
       box.appendChild(sortButtons(state, refresh));
+      const favFilterBtn = el("button", { class:"btn gray" }, "お気に入り");
+      favFilterBtn.addEventListener("click", ()=>{ state.onlyFav = !state.onlyFav; renderList(); });
+      favFilterBtn.textContent = state.onlyFav ? "お気に入り✓" : "お気に入り";
+      favFilterBtn.className = state.onlyFav ? "btn" : "btn gray";
+      box.appendChild(el("div", { class:"row" }, favFilterBtn));
+      box.appendChild(tagFilterRow(state, renderList));
       box.appendChild(el("div", { class:"row" }, searchInput));
       box.appendChild(el("div", { class:"row" }, refreshBtn));
 
@@ -399,13 +434,25 @@
       if(!state.threads.length){
         list.appendChild(el("div", { style:"padding:12px; color: rgba(255,255,255,.70); font-weight:900;" }, "なし"));
       }else{
+        const fav = loadFavSet();
         const q = String(state.query||"").trim().toLowerCase();
-        const filtered = q ? state.threads.filter(t=>{
-          const title = String(t.title||"").toLowerCase();
-          const body = String(t.body||"").toLowerCase();
-          const tags = Array.isArray(t.tags) ? t.tags.map(x=>String(x||"").toLowerCase()) : [];
-          return title.includes(q) || body.includes(q) || tags.some(x=>x.includes(q));
-        }) : state.threads;
+        const sel = Array.isArray(state.tagSel) ? state.tagSel.map(String) : [];
+        const base = (state.threads||[]);
+        const filtered = base.filter(t=>{
+          if(state.onlyFav && !fav.has(String(t.id))) return false;
+          if(q){
+            const title = String(t.title||"").toLowerCase();
+            const body = String(t.body||"").toLowerCase();
+            const tags = Array.isArray(t.tags) ? t.tags.map(x=>String(x||"").toLowerCase()) : [];
+            const ok = title.includes(q) || body.includes(q) || tags.some(x=>x.includes(q));
+            if(!ok) return false;
+          }
+          if(sel.length){
+            const ttags = new Set((Array.isArray(t.tags)?t.tags:[]).map(x=>String(x)));
+            for(const s of sel){ if(!ttags.has(s)) return false; }
+          }
+          return true;
+        });
         filtered.forEach((t, idx)=> list.appendChild(threadRowItem(t, idx, state.sort, "read")));
       }
       box.appendChild(el("div", { class:"sep" }));
