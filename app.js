@@ -4,7 +4,12 @@
   const BASE_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "https://hate-server.onrender.com";
   const API_PREFIX = "/api/diary";
 
-  const LS = { userId:"tkn_user_id_v1", liked:"tkn_liked_v1", adminSession:"tkn_admin_session_v1" };
+  const LS = {
+    userId: "tkn_user_id_v1",
+    liked: "tkn_liked_v1",
+    fav: "tkn_fav_diary_v1",
+    adminSession: "tkn_admin_session_v1",
+  };
 
   const $ = (s)=>document.querySelector(s);
   const el = (tag, attrs={}, ...children) => {
@@ -42,6 +47,26 @@
   function likedSet(){ const s = loadJSON(LS.liked, {}); return (s && typeof s === "object") ? s : {}; }
   function setLiked(threadId){ const s = likedSet(); s[threadId]=1; saveJSON(LS.liked, s); }
   function isLiked(threadId){ const s = likedSet(); return !!s[threadId]; }
+
+  function loadFavSet(){
+    const arr = loadJSON(LS.fav, []);
+    if(Array.isArray(arr)) return new Set(arr.map(String));
+    return new Set();
+  }
+  function saveFavSet(set){ saveJSON(LS.fav, Array.from(set)); }
+  function isFav(threadId){ return loadFavSet().has(String(threadId)); }
+  function addFav(threadId){
+    const s = loadFavSet();
+    s.add(String(threadId));
+    saveFavSet(s);
+  }
+  function toggleFav(threadId){
+    const s = loadFavSet();
+    const k = String(threadId);
+    if(s.has(k)) s.delete(k); else s.add(k);
+    saveFavSet(s);
+    return s.has(k);
+  }
 
   const fmt = (iso)=>{
     try{
@@ -242,7 +267,7 @@
       onclick: async ()=>{ state.sort=value; await refresh(); },
       disabled: state.busy
     }, label);
-    return el("div", { class:"row" }, mk("新着","new"), mk("いいね(日)","like_day"), mk("いいね(週)","like_week"), mk("いいね(月)","like_month"));
+    return el("div", { class:"row" }, mk("新着","new"), mk("PV(日)","like_day"), mk("PV(週)","like_week"), mk("PV(月)","like_month"));
   }
 
   
@@ -270,10 +295,12 @@
     return row;
   }
 
-function threadRowItem(t, idx, sort, mode){
+function threadRowItem(t, idx, sort, mode, rerender){
     const lk = sort==="like_day" ? (t.likeDay||0) : sort==="like_week" ? (t.likeWeek||0) : sort==="like_month" ? (t.likeMonth||0) : (t.likeMonth||0);
+    const toThread = ()=>{ location.href = `thread.html?id=${encodeURIComponent(t.id)}&mode=${encodeURIComponent(mode)}`; };
+
     const titleBtn = el("div", { class:"tTitle" }, t.title || "(無題)");
-    titleBtn.addEventListener("click", ()=>{ location.href = `thread.html?id=${encodeURIComponent(t.id)}&mode=${encodeURIComponent(mode)}`; });
+    titleBtn.addEventListener("click", toThread);
 
     const tags = el("div", { class:"tags" });
     for(const tg of (t.tags||[])) tags.appendChild(el("button", { class:"tag" }, tg));
@@ -281,12 +308,24 @@ function threadRowItem(t, idx, sort, mode){
     const meta = el("div", { class:"tMeta" },
       el("span", {}, fmt(t.updatedAt||t.createdAt)),
       el("span", {}, `レス ${(t.postCount ?? 0)}`),
-      el("span", {}, `いいね ${lk}`)
+      el("span", {}, `PV ${lk}`)
     );
+
+    const favOn = isFav(t.id);
+    const favBtn = el("button", { class: favOn ? "btn small" : "btn gray small", title:"お気に入り" }, favOn ? "★" : "☆");
+    favBtn.addEventListener("click", (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      try{ toggleFav(t.id); }catch{}
+      try{ rerender && rerender(); }catch{}
+    });
+    const openBtn = el("button", { class:"btn gray small" }, "開く");
+    openBtn.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); toThread(); });
+
+    const actions = el("div", { class:"row", style:"justify-content:flex-end; gap:10px; margin-top:8px;" }, favBtn, openBtn);
 
     return el("div", { class:"threadRow" },
       el("div", { class:"tNo" }, String(idx+1)),
-      el("div", { class:"tMain" }, titleBtn, meta, tags)
+      el("div", { class:"tMain" }, titleBtn, meta, tags, actions)
     );
   }
 
@@ -352,12 +391,13 @@ function threadRowItem(t, idx, sort, mode){
 
     async function refresh(){
       state.busy = true;
-      submit.disabled = true; refreshBtn.disabled = true;
+      // 一覧取得中でも「立てる」は押せる（サーバ起動待ちで無反応に見えるのを防ぐ）
+      refreshBtn.disabled = true;
       try{ state.threads = await listThreads(state.sort); }
       catch(e){ showModal({ title:"確認", body:"ERROR", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "閉じる") ] }); state.threads=[]; }
       renderList();
       state.busy = false;
-      submit.disabled = false; refreshBtn.disabled = false;
+      refreshBtn.disabled = false;
     }
 
     function renderList(){
@@ -369,7 +409,7 @@ function threadRowItem(t, idx, sort, mode){
       if(!state.threads.length){
         list.appendChild(el("div", { style:"padding:12px; color: rgba(255,255,255,.70); font-weight:900;" }, "なし"));
       }else{
-        state.threads.forEach((t, idx)=> list.appendChild(threadRowItem(t, idx, state.sort, "write")));
+        state.threads.forEach((t, idx)=> list.appendChild(threadRowItem(t, idx, state.sort, "write", renderList)));
       }
       right.appendChild(el("div", { class:"sep" }));
       right.appendChild(list);
@@ -405,9 +445,12 @@ function threadRowItem(t, idx, sort, mode){
   async function pageRead(){
     mountHeader();
     const root = $("#root"); root.innerHTML = "";
-    const state = { busy:false, sort:"new", threads:[] };
+    const state = { busy:false, sort:"new", threads:[], query:"", onlyFav:false, tagSel:[] };
     const box = el("div", { class:"card" }, el("div", { class:"title" }, "日記一覧"));
     const refreshBtn = el("button", { class:"btn gray" }, "更新");
+
+    const searchInput = el("input", { type:"text", placeholder:"検索", maxlength:"40" });
+    searchInput.addEventListener("input", ()=>{ state.query = String(searchInput.value||""); renderList(); });
 
     async function refresh(){
       state.busy = true; refreshBtn.disabled = true;
@@ -453,7 +496,7 @@ function threadRowItem(t, idx, sort, mode){
           }
           return true;
         });
-        filtered.forEach((t, idx)=> list.appendChild(threadRowItem(t, idx, state.sort, "read")));
+        filtered.forEach((t, idx)=> list.appendChild(threadRowItem(t, idx, state.sort, "read", renderList)));
       }
       box.appendChild(el("div", { class:"sep" }));
       box.appendChild(list);
@@ -881,7 +924,3 @@ const fileInput = el("input", { type:"file", multiple:"multiple", accept:"image/
   }
   window.addEventListener("DOMContentLoaded", init);
 })();
-function loadFavSet(){ try{return new Set(JSON.parse(localStorage.getItem("tkn_fav_diary_v1")||"[]"));}catch{return new Set();}}
-function saveFavSet(s){ localStorage.setItem("tkn_fav_diary_v1", JSON.stringify(Array.from(s))); }
-function isFav(id){ return loadFavSet().has(String(id)); }
-function toggleFav(id){ const s=loadFavSet(); const k=String(id); s.has(k)?s.delete(k):s.add(k); saveFavSet(s); return s.has(k); }
