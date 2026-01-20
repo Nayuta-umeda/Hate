@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_VERSION = "v1.1.0";
+  const APP_VERSION = "v1.1.1";
   const BASE_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "https://hate-server.onrender.com";
   const API_PREFIX = "/api/diary";
 
@@ -267,7 +267,7 @@
       onclick: async ()=>{ state.sort=value; await refresh(); },
       disabled: state.busy
     }, label);
-    return el("div", { class:"row" }, mk("新着","new"), mk("PV(日)","like_day"), mk("PV(週)","like_week"), mk("PV(月)","like_month"));
+    return el("div", { class:"row" }, mk("新着","new"), mk("PV(日)","pv_day"), mk("PV(週)","pv_week"), mk("PV(月)","pv_month"));
   }
 
   
@@ -296,7 +296,7 @@
   }
 
 function threadRowItem(t, idx, sort, mode, rerender){
-    const lk = sort==="like_day" ? (t.likeDay||0) : sort==="like_week" ? (t.likeWeek||0) : sort==="like_month" ? (t.likeMonth||0) : (t.likeMonth||0);
+    const lk = sort==="pv_day" ? (t.likeDay||0) : sort==="pv_week" ? (t.likeWeek||0) : sort==="pv_month" ? (t.likeMonth||0) : (t.likeMonth||0);
     const toThread = ()=>{ location.href = `thread.html?id=${encodeURIComponent(t.id)}&mode=${encodeURIComponent(mode)}`; };
 
     const titleBtn = el("div", { class:"tTitle" }, t.title || "(無題)");
@@ -924,3 +924,4 @@ const fileInput = el("input", { type:"file", multiple:"multiple", accept:"image/
   }
   window.addEventListener("DOMContentLoaded", init);
 })();
+function fmtPV(t){ const n = (t?.pvDay ?? t?.pvWeek ?? t?.pvMonth ?? t?.pvTotal ?? 0) | 0; return n; }
