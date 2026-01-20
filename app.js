@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_VERSION = "v1.1.1";
+  const APP_VERSION = "v1.1.6";
   const BASE_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "https://hate-server.onrender.com";
   const API_PREFIX = "/api/diary";
 
@@ -135,9 +135,15 @@
     return json;
   }
 
-  async function listThreads(sort){
+  async function listThreads(sort, opts={}){
     const s = String(sort||"new");
-    const r = await apiFetch(`/threads?sort=${encodeURIComponent(s)}`);
+    const params = new URLSearchParams();
+    params.set("sort", s);
+    if(opts && opts.mine){
+      params.set("mine","1");
+      if(opts.authorId) params.set("authorId", String(opts.authorId));
+    }
+    const r = await apiFetch(`/threads?${params.toString()}`);
     return r?.threads || [];
   }
   async function createThread({title, body, tags, authorId}){
@@ -296,7 +302,10 @@
   }
 
 function threadRowItem(t, idx, sort, mode, rerender){
-    const lk = sort==="pv_day" ? (t.likeDay||0) : sort==="pv_week" ? (t.likeWeek||0) : sort==="pv_month" ? (t.likeMonth||0) : (t.likeMonth||0);
+    const pv = sort==="pv_day" ? (t.pvDay||0)
+      : sort==="pv_week" ? (t.pvWeek||0)
+      : sort==="pv_month" ? (t.pvMonth||0)
+      : (t.pvTotal||0);
     const toThread = ()=>{ location.href = `thread.html?id=${encodeURIComponent(t.id)}&mode=${encodeURIComponent(mode)}`; };
 
     const titleBtn = el("div", { class:"tTitle" }, t.title || "(無題)");
@@ -308,7 +317,7 @@ function threadRowItem(t, idx, sort, mode, rerender){
     const meta = el("div", { class:"tMeta" },
       el("span", {}, fmt(t.updatedAt||t.createdAt)),
       el("span", {}, `レス ${(t.postCount ?? 0)}`),
-      el("span", {}, `PV ${lk}`)
+      el("span", {}, `PV ${pv}`)
     );
 
     const favOn = isFav(t.id);
@@ -336,8 +345,8 @@ function threadRowItem(t, idx, sort, mode, rerender){
     root.appendChild(el("div", { class:"home" },
       el("h1", {}, "たのしいこと日記"),
       el("div", { class:"ctaRow" },
-        el("a", { class:"btn", href:"write.html" }, "自分の日記を書く"),
-        el("a", { class:"btn", href:"read.html" }, "みんなの日記を読む")
+        el("a", { class:"btn", href:"index.html#write" }, "自分の日記を書く"),
+        el("a", { class:"btn", href:"index.html#read" }, "みんなの日記を読む")
       )
     ));
   }
@@ -393,7 +402,7 @@ function threadRowItem(t, idx, sort, mode, rerender){
       state.busy = true;
       // 一覧取得中でも「立てる」は押せる（サーバ起動待ちで無反応に見えるのを防ぐ）
       refreshBtn.disabled = true;
-      try{ state.threads = await listThreads(state.sort); }
+      try{ state.threads = await listThreads(state.sort, { mine:true, authorId: state.userId }); }
       catch(e){ showModal({ title:"確認", body:"ERROR", actions:[ el("button", { class:"btn gray", onclick: closeModal }, "閉じる") ] }); state.threads=[]; }
       renderList();
       state.busy = false;
@@ -916,7 +925,17 @@ const fileInput = el("input", { type:"file", multiple:"multiple", accept:"image/
 
   function init(){
     const page = document.documentElement.dataset.page || "";
-    if(page === "lobby") return pageLobby();
+    const hash = (location.hash || "").replace(/^#/, "").trim();
+    const q = new URLSearchParams(location.search || "");
+    const qp = String(q.get("p") || "").trim();
+    const route = qp || hash;
+    if(page === "lobby"){
+      if(route === "read") return pageRead();
+      if(route === "write") return pageWrite();
+      // admin は gate 経由が基本。URL直打ちの実験用にだけ残す。
+      if(route === "admin") return pageAdmin();
+      return pageLobby();
+    }
     if(page === "write") return pageWrite();
     if(page === "read") return pageRead();
     if(page === "thread") return pageThread();
@@ -924,4 +943,3 @@ const fileInput = el("input", { type:"file", multiple:"multiple", accept:"image/
   }
   window.addEventListener("DOMContentLoaded", init);
 })();
-function fmtPV(t){ const n = (t?.pvDay ?? t?.pvWeek ?? t?.pvMonth ?? t?.pvTotal ?? 0) | 0; return n; }

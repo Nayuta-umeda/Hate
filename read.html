@@ -25,9 +25,24 @@
   <div class="wrap">
     <div class="top">
       <div class="logo" id="logo">たのしいこと日記</div>
-      <div class="nav" id="nav"></div>
+      <div class="nav" id="nav">
+        <a class="btn gray small" href="index.html">ロビー</a>
+      </div>
     </div>
-    <div id="root"></div>
+    <div id="root">
+      <div class="card">
+        <div class="title">日記一覧</div>
+        <div class="row">
+          <button class="btn tab small on" type="button">新着</button>
+          <button class="btn tab small" type="button">PV(日)</button>
+          <button class="btn tab small" type="button">PV(週)</button>
+          <button class="btn tab small" type="button">PV(月)</button>
+        </div>
+        <div class="row">
+          <button class="btn gray" type="button">更新</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="modalBack" id="modalBack" role="dialog" aria-modal="true" style="display:none">
@@ -38,8 +53,8 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script defer src="app.js"></script>
 
-  <div class="versionBadge" id="versionBadge">v1.1.1</div>
+  <div class="versionBadge" id="versionBadge">v1.1.6</div>
 </body>
 </html>
